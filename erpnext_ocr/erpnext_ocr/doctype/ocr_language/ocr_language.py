@@ -23,7 +23,14 @@ def check_language(lang):
 @frappe.whitelist()
 def lang_available(lang):
     """Call Tesseract OCR to verify language is available."""
-    list_of_languages = tesserocr.get_languages()[1]
+    print(len(tesserocr.get_languages()))
+    l = len(tesserocr.get_languages()[1][0])
+    print(tesserocr.get_languages()[1][0][l-3:l])
+    list_of_languages2 = tesserocr.get_languages()[1]
+    list_of_languages=[]
+    for i in list_of_languages2:
+        l2 = len(i)
+        list_of_languages.append(i[l2-3:l2])
     if len(lang) == 2:
         return frappe.get_doc("OCR Language", {"lang": lang}).code in list_of_languages
 
@@ -38,7 +45,7 @@ def get_current_language(user):
     if not language:
         settings = frappe.get_doc("System Settings")
         language = settings.language
-
+    #print(language)
     lang_code = frappe.get_doc("OCR Language", {"lang": language}).name
     return lang_code if lang_code is not None else "eng"
 
@@ -46,19 +53,25 @@ def get_current_language(user):
 class OCRLanguage(Document):
     def __init__(self, *args, **kwargs):
         super(OCRLanguage, self).__init__(*args, **kwargs)
-        self.TESSDATA_LINK = "https://github.com/tesseract-ocr/tessdata{}/blob/master/{}.traineddata?raw=true"
+        # self.TESSDATA_LINK = "https://github.com/tesseract-ocr/tessdata{}/blob/master/{}.traineddata?raw=true"
+        self.TESSDATA_LINK = "https://github.com/tesseract-ocr/tessdata/blob/master/eng.traineddata?raw=true"
+        print(self, self.code, self.TESSDATA_LINK)
         if self.code:
             self.is_supported = check_language(self.code)
 
+    @frappe.whitelist()
     def download_tesseract(self):
-        if self.type_of_ocr == 'Default':
+        print(self.type_of_ocr)
+        if self.type_of_ocr == 'Default' or not self.type_of_ocr:
             path = self.TESSDATA_LINK.format("", self.name)
         else:
             path = self.TESSDATA_LINK.format(
                 "_" + self.type_of_ocr.lower(), self.name)
+        print('Path: ' + path)
 
         res = requests.get(path)
-        dest = os.getenv("TESSDATA_PREFIX", "/usr/share/tesseract-ocr/tessdata/") + \
+        #print(res.content)
+        dest = os.getenv("TESSDATA_PREFIX", "/usr/share/tesseract-ocr/tessdata") + \
             "/" + self.name + ".traineddata"
 
         if self.type_of_ocr == 'Custom':

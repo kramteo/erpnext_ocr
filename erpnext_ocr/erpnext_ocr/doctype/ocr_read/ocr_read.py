@@ -50,6 +50,7 @@ class OCRRead(Document):
         self.read_time = None
         super(OCRRead, self).__init__(*args, **kwargs)
 
+    @frappe.whitelist()
     def read_image(self):
         return read_ocr(self)
 
@@ -76,7 +77,8 @@ def read_ocr(obj):
     obj.read_result = text
     obj.save()
 
-    return text
+    # return text
+    return None
 
 
 @frappe.whitelist()
@@ -115,20 +117,21 @@ def read_document(path, lang='eng', spellcheck=False, event="ocr_progress_bar"):
     ocr = frappe.get_doc("OCR Settings")
 
     text = " "
-    with tesserocr.PyTessBaseAPI(lang=lang) as api:
+    print(path, lang)
+    with tesserocr.PyTessBaseAPI(lang=lang, path='/home/mt/frappe-bench/sites/accounting.nprimeintl.com/public/files/') as api:
 
         if path.endswith('.pdf'):
             from wand.image import Image as wi
 
             # https://stackoverflow.com/questions/43072050/pyocr-with-tesseract-runs-out-of-memory
             with wi(filename=fullpath, resolution=ocr.pdf_resolution) as pdf:
-                pdf_image = pdf.convert('jpeg')
+                pdf_image = pdf.convert('png')
                 i = 0
                 size = len(pdf_image.sequence) * 3
 
                 for img in pdf_image.sequence:
                     with wi(image=img) as img_page:
-                        image_blob = img_page.make_blob('jpeg')
+                        image_blob = img_page.make_blob('png')
                         frappe.publish_realtime(
                             event, {"progress": [i, size]}, user=frappe.session.user)
                         i += 1
@@ -163,4 +166,5 @@ def read_document(path, lang='eng', spellcheck=False, event="ocr_progress_bar"):
     frappe.publish_realtime(
         event, {"progress": [100, 100]}, user=frappe.session.user)
 
+    print(text)
     return text

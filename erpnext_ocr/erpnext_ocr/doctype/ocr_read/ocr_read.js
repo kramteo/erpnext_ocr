@@ -24,8 +24,10 @@ frappe.ui.form.on('OCR Read', {
             },
             callback: function (r) {
                 cur_dialog.hide();
-                frappe.msgprint(r.message.message);
-                cur_frm.refresh();
+                // frappe.msgprint(r.message.message);
+                // console.log(r.message.message)
+                // cur_frm.refresh();
+                frm.reload_doc();
             }
         });
     },

@@ -3,8 +3,9 @@
 
 frappe.ui.form.on('OCR Language',
     {
+        // download: function (frm) {
         download: function (frm) {
-            frappe.call({
+                frappe.call({
                 method: "download_tesseract",
                 doc: frm.doc,
                 success: function (r) {
