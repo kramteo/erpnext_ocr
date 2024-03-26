@@ -55,7 +55,7 @@ class OCRRead(Document):
     def __init__(self, *args, **kwargs):
         self.read_result = None
         self.read_time = None
-        self.generated_table = None
+        self.csv_data = None
         super(OCRRead, self).__init__(*args, **kwargs)
 
     @frappe.whitelist()
@@ -92,29 +92,70 @@ class OCRRead(Document):
             cols.append(i.column_name)
         text = self.read_result
         lines = re.split('\n', text)
-        rows = extract_rows(lines, cols)   
+        html, csv_data = extract_rows(lines, cols)   
 
-        return rows     
+        return html, csv_data     
         
 
 def extract_rows(lines, cols):
     rows = []
-    data = lines.pop(0)
+    line1 = lines.pop(0)
     col_len = len(cols)
     count = 1
     for i in lines:
         j = get_elements(i)
         if not j:
             break
-        print(i,j)
         if len(j) != col_len:
-            frappe.msgprint(frappe._("Data row " + str(count) + " does not contain the required number of items. Please rectify"),
+            frappe.msgprint(frappe._("Data row " + str(count) + " does not contain the required number of items. Have " + str(len(j)) + ", need" + str(col_len) + ". Please rectify"),
                             raise_exception=True)
         count+=1
         rows.append(j)
     
-    return rows
+    html = derive_html(cols, rows)
+    csv_data = derive_csv(cols, rows)
+    print(html, csv_data)
+    return html, csv_data
 
+
+def derive_csv(cols, rows):
+    csv_data = ""
+    for i in cols:
+        csv_data += i + ", "
+    
+    csv_data = csv_data[0: len(csv_data)-2] + "\n"
+    
+    for i in rows:
+        for j in i:
+            csv_data += j + ", "
+        csv_data = csv_data[0: len(csv_data)-2] + "\n"
+    
+    csv_data = csv_data[0: len(csv_data)-2]
+
+    return csv_data
+
+
+def derive_html(cols, rows):
+    html = '<!DOCTYPE html> <table style="width: 100%; border: 1.0px solid black;"> '
+
+    # Set Headers
+    html += "<thead> "
+    html += "<tr> "
+    for i in cols:
+        html += '<th style="border: 1.0px solid black;">' + i + '</th> '
+    html += "</tr> "
+    html += "</thead> "
+
+    # Set Content
+    for i in rows:
+        html += "<tr> \n"
+        for j in i:
+            html += '<td style="border: 1.0px solid black;">' + j + '</td> '
+        html += "</tr> "
+
+    html += "</table> </html>"
+
+    return html
 
 
 def get_elements(text):
@@ -148,6 +189,11 @@ def get_elements(text):
         if i == len(text) and item:
             items.append(item)
             item = ""
+
+    for i in items:
+        if re.search(',', i):
+            frappe.msgprint(frappe._("Items cannot contain commas. Please remove them."),
+                            raise_exception=True)
 
     return items
 

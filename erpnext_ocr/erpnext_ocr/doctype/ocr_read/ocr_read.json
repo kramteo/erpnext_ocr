@@ -18,6 +18,7 @@
   "ocr_columns",
   "generate_rows",
   "generated_table",
+  "csv_data",
   "create_csv_file"
  ],
  "fields": [
@@ -90,22 +91,27 @@
    "label": "Generate Rows"
   },
   {
-   "depends_on": "eval: parent.generated_table",
+   "depends_on": "eval:parent.ocr_columns.length>0;",
    "fieldname": "generated_table",
-   "fieldtype": "Long Text",
+   "fieldtype": "HTML",
    "label": "Generated Table",
    "read_only": 1
   },
   {
-   "depends_on": "eval: parent.generated_table;",
+   "depends_on": "eval: parent.csv_data;",
    "fieldname": "create_csv_file",
    "fieldtype": "Button",
    "label": "Create CSV File"
+  },
+  {
+   "fieldname": "csv_data",
+   "fieldtype": "Long Text",
+   "label": "CSV Data"
   }
  ],
  "icon": "fa fa-eye",
  "links": [],
- "modified": "2024-03-25 17:00:15.073510",
+ "modified": "2024-03-26 12:15:22.327201",
  "modified_by": "Administrator",
  "module": "ERPNext OCR",
  "name": "OCR Read",

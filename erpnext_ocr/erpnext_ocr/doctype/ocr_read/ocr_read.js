@@ -32,6 +32,7 @@ frappe.ui.form.on('OCR Read', {
     },
     generate_columns: function (frm) {
         frm.set_value('ocr_columns', []);
+        frm.set_value('csv_data', '');
         frappe.call({
             method: "get_columns",
             doc: cur_frm.doc,
@@ -50,7 +51,8 @@ frappe.ui.form.on('OCR Read', {
         });
     },
     generate_rows: function (frm) {
-        frm.set_value('generated_table', '');
+        frm.set_df_property('generated_table', 'options', '');
+        frm.set_value('csv_data', '');
         frappe.call({
             method: "get_rows",
             doc: cur_frm.doc,
@@ -58,10 +60,16 @@ frappe.ui.form.on('OCR Read', {
             //     doc: frm.doc.read_result
             // },
         callback: function(r) {
-                console.log(r.message)
-                cur_frm.refresh();
+                console.log(r.message);
+                frm.set_df_property('generated_table', 'options', r.message[0]);
+                frm.set_value('csv_data', r.message[1]);
+                // cur_frm.refresh();
             }
         });
+    },
+    create_csv_file: function (frm) {
+        console.log(frm.doc.csv_data);
+        download("table.csv", frm.doc.csv_data);
     },
     import: function (frm) {
         if (typeof frm.doc.ocr_import != "undefined" && frm.doc.ocr_import !== '') {
