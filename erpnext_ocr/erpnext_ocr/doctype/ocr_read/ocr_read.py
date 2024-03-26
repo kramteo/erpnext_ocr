@@ -18,6 +18,9 @@ from frappe.model.document import Document
 
 from erpnext_ocr.erpnext_ocr.doctype.ocr_language.ocr_language import lang_available
 
+from frappe.utils.csvutils import build_csv_response
+from frappe.utils.response import build_response
+
 
 def get_words_from_text(message):
     """
@@ -38,9 +41,13 @@ def get_spellchecked_text(message, language):
     spell_checker = SpellChecker(lang)
     only_words = get_words_from_text(message)
     misspelled = spell_checker.unknown(only_words)
+    # print(only_words)
+    # print(misspelled)
     for word in misspelled:
         corrected_word = spell_checker.correction(word)
-        message = message.replace(word, corrected_word)
+        # print(word, corrected_word)
+        if corrected_word:
+            message = message.replace(word, corrected_word)
     return message
 
 
@@ -48,16 +55,103 @@ class OCRRead(Document):
     def __init__(self, *args, **kwargs):
         self.read_result = None
         self.read_time = None
+        self.generated_table = None
         super(OCRRead, self).__init__(*args, **kwargs)
 
     @frappe.whitelist()
     def read_image(self):
-        return read_ocr(self)
+        # text = read_ocr(self)
+        # print(text)
+        # return text
+        read_ocr(self)
+        return 
 
     def read_image_bg(self, is_async=True, now=False):
         return frappe.enqueue("erpnext_ocr.erpnext_ocr.doctype.ocr_read.ocr_read.read_ocr",
                               queue="long", timeout=1500, is_async=is_async,
                               now=now, **{'obj': self})
+
+
+    @frappe.whitelist()
+    def get_columns(self):
+        text = self.read_result
+        lines = re.split('\n', text)
+        line1 = lines[0]
+        items = get_elements(line1)
+        if not items or len(items)<2:
+            frappe.msgprint(frappe._("The read result appears to be empty. Please make sure that the headers are properly separated by spaces."),
+                            raise_exception=True)
+        
+        return items
+
+    @frappe.whitelist()
+    def get_rows(self):
+        obj = self.ocr_columns
+        cols = []
+        for i in obj:
+            cols.append(i.column_name)
+        text = self.read_result
+        lines = re.split('\n', text)
+        rows = extract_rows(lines, cols)   
+
+        return rows     
+        
+
+def extract_rows(lines, cols):
+    rows = []
+    data = lines.pop(0)
+    col_len = len(cols)
+    count = 1
+    for i in lines:
+        j = get_elements(i)
+        if not j:
+            break
+        print(i,j)
+        if len(j) != col_len:
+            frappe.msgprint(frappe._("Data row " + str(count) + " does not contain the required number of items. Please rectify"),
+                            raise_exception=True)
+        count+=1
+        rows.append(j)
+    
+    return rows
+
+
+
+def get_elements(text):
+    items = []
+    item = ""
+    i=0
+    while i<len(text):
+        if not item and text[i] != " ":
+            if text[i] == "\'" or text[i] == '\"':
+                quotechar = text[i]
+                found=0
+                for j in range(i + 1, len(text)):
+                    if text[j] == quotechar:
+                        item = text[i+1: j]
+                        i=j+1
+                        items.append(item)
+                        item = ""
+                        found=1
+                        break
+                if not found:
+                    frappe.msgprint(frappe._("There is a problem with quotes in the text. Please check and rectify."),
+                            raise_exception=True)
+            else:
+                item = text[i]
+        elif item and text[i] != " ":
+            item += text[i]
+        elif item and text[i] == " ":
+            items.append(item)
+            item = ""
+        i+=1
+        if i == len(text) and item:
+            items.append(item)
+            item = ""
+
+    return items
+
+
 
 
 @frappe.whitelist()
@@ -77,8 +171,11 @@ def read_ocr(obj):
     obj.read_result = text
     obj.save()
 
+    # The following is to test .csv file saving
+    # text = 'a, b, c, d' + '\n' + '1, 2, 3, 4' + '\n' + '5, 6, 7, 8'
     # return text
-    return None
+    return
+
 
 
 @frappe.whitelist()
@@ -116,9 +213,10 @@ def read_document(path, lang='eng', spellcheck=False, event="ocr_progress_bar"):
 
     ocr = frappe.get_doc("OCR Settings")
 
-    text = " "
-    print(path, lang)
-    with tesserocr.PyTessBaseAPI(lang=lang, path='/home/mt/frappe-bench/sites/accounting.nprimeintl.com/public/files/') as api:
+    text = ""
+    # print(path, lang)
+    # with tesserocr.PyTessBaseAPI(lang=lang, path='/home/mt/frappe-bench/sites/accounting.nprimeintl.com/public/files/') as api:
+    with tesserocr.PyTessBaseAPI(lang=lang, path='/usr/share/tesseract-ocr/4.00/tessdata/') as api:
 
         if path.endswith('.pdf'):
             from wand.image import Image as wi
@@ -162,9 +260,24 @@ def read_document(path, lang='eng', spellcheck=False, event="ocr_progress_bar"):
 
     if spellcheck:
         text = get_spellchecked_text(text, lang)
+    
+    # print('Start response')
+    # build_csv_response([['a','b','c'],[1,2,3],[4,5,6]], 't')
+    # # frappe.response.display_content_as = "attachment"
+    # # build_response(response_type="download")
+    # # frappe.response['message'] = b
+    # print('End response')
 
     frappe.publish_realtime(
         event, {"progress": [100, 100]}, user=frappe.session.user)
 
-    print(text)
+    # print(text)
     return text
+
+
+def download(name):
+    file = frappe.get_doc("File", name)
+    frappe.response.filename = file.file_name
+    frappe.response.filecontent = file.get_content()
+    frappe.response.type = "download"
+    frappe.response.display_content_as = "attachment"

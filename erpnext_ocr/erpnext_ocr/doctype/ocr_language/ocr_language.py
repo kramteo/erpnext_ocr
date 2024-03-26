@@ -23,14 +23,14 @@ def check_language(lang):
 @frappe.whitelist()
 def lang_available(lang):
     """Call Tesseract OCR to verify language is available."""
-    print(len(tesserocr.get_languages()))
-    l = len(tesserocr.get_languages()[1][0])
-    print(tesserocr.get_languages()[1][0][l-3:l])
-    list_of_languages2 = tesserocr.get_languages()[1]
-    list_of_languages=[]
-    for i in list_of_languages2:
-        l2 = len(i)
-        list_of_languages.append(i[l2-3:l2])
+    # print(tesserocr.get_languages(), len(tesserocr.get_languages()))
+    # l = len(tesserocr.get_languages()[1][0])
+    # print(tesserocr.get_languages()[1][0][l-3:l])
+    list_of_languages = tesserocr.get_languages(path='/usr/share/tesseract-ocr/4.00/tessdata/')[1]
+    # list_of_languages=[]
+    # for i in list_of_languages2:
+    #     l2 = len(i)
+    #     list_of_languages.append(i[l2-3:l2])
     if len(lang) == 2:
         return frappe.get_doc("OCR Language", {"lang": lang}).code in list_of_languages
 

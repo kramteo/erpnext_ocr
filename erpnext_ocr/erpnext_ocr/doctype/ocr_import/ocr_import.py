@@ -39,9 +39,12 @@ def generate_doctype(doctype_import_link, read_result, ignore_mandatory=False, i
     list_with_errors = []
     list_with_table_values = []
 
+    print(doctype_import_doc.mappings)
     for field in doctype_import_doc.mappings:
+        print(field.value_type)
         try:
             found_field = find_field(field, read_result)
+            print(found_field)
             if found_field is None:
                 frappe.throw(
                     frappe._("Cannot find field '{0}' in text").format(field.field))

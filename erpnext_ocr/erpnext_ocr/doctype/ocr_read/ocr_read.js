@@ -19,15 +19,47 @@ frappe.ui.form.on('OCR Read', {
         frappe.call({
             method: "read_image",
             doc: cur_frm.doc,
-            args: {
-                "spell_checker": frm.doc.spell_checker
-            },
-            callback: function (r) {
-                cur_dialog.hide();
-                // frappe.msgprint(r.message.message);
-                // console.log(r.message.message)
-                // cur_frm.refresh();
-                frm.reload_doc();
+            // args: {
+            //     "spell_checker": frm.doc.spell_checker
+            // },
+            callback: function(r) {
+                // cur_dialog.hide();
+                // // console.log("Message: ", r);
+                // // download("test.csv", r.message);
+                cur_frm.refresh();
+            }
+        });
+    },
+    generate_columns: function (frm) {
+        frm.set_value('ocr_columns', []);
+        frappe.call({
+            method: "get_columns",
+            doc: cur_frm.doc,
+            // args: {
+            //     doc: frm.doc.read_result
+            // },
+        callback: function(r) {
+                console.log(r.message[0])
+                for (let i = 0; i < r.message.length; i++) {
+                    let row = frm.add_child('ocr_columns', {
+                        column_name: r.message[i]
+                    });
+                }
+                cur_frm.refresh();
+            }
+        });
+    },
+    generate_rows: function (frm) {
+        frm.set_value('generated_table', '');
+        frappe.call({
+            method: "get_rows",
+            doc: cur_frm.doc,
+            // args: {
+            //     doc: frm.doc.read_result
+            // },
+        callback: function(r) {
+                console.log(r.message)
+                cur_frm.refresh();
             }
         });
     },
@@ -54,3 +86,18 @@ frappe.ui.form.on('OCR Read', {
         }
     }
 });
+
+
+function download(filename, content) {
+    var element = document.createElement('a');
+    element.setAttribute('href', 'data:application/octet-stream;charset=utf-8,' + encodeURIComponent(content));
+    element.setAttribute('download', filename);
+  
+    element.style.display = 'none';
+    document.body.appendChild(element);
+  
+    element.click();
+  
+    document.body.removeChild(element);
+  }
+  
